@@ -1,0 +1,105 @@
+
+// Click Trade Manager
+// Developer's site: forexroboteasy.com
+// Development by: Forex Robot Easy Team
+
+// Define drawdown limit
+double drawdownLimit = 0.1; // 10% drawdown limit
+
+// Define profit target
+double profitTarget = 0.05; // 5% profit target
+
+// Define trade management variables
+double stopLoss = 0.05; // 5% stop loss
+double takeProfit = 0.1; // 10% take profit
+
+// Function to monitor drawdown limits
+void monitorDrawdown() {
+    double accountBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+    double accountEquity = AccountInfoDouble(ACCOUNT_EQUITY);
+    
+    // Calculate drawdown
+    double drawdown = (accountBalance - accountEquity) / accountBalance;
+    
+    // Check if drawdown exceeds the limit
+    if (drawdown >= drawdownLimit) {
+        // Close all open trades
+        CloseAll();
+        
+        // Send alert to the trader
+        SendAlert('Drawdown limit breached. All trades closed.');
+    }
+}
+
+// Function to track trade progress and set profit targets
+void trackTradeProgress() {
+    double tradeProfit = OrderProfit();
+    double tradeProfitPercentage = tradeProfit / OrderTicket() * 100;
+    
+    // Check if profit target is reached
+    if (tradeProfitPercentage >= profitTarget) {
+        // Close the trade
+        CloseOrder(OrderTicket(), OrderLots(), MarketInfo(OrderSymbol(), MODE_BID));
+        
+        // Send alert to the trader
+        SendAlert('Profit target reached. Trade closed.');
+    }
+}
+
+// Function to handle trade execution, stop losses, and take profits
+void tradeManagement() {
+    int totalOrders = OrdersTotal();
+    
+    // Loop through all open orders
+    for (int i = totalOrders - 1; i >= 0; i--) {
+        if (OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) {
+            // Set stop loss and take profit
+            OrderModify(OrderTicket(), OrderOpenPrice(), NormalizeDouble(OrderOpenPrice() - stopLoss * OrderOpenPrice(), Digits), NormalizeDouble(OrderOpenPrice() + takeProfit * OrderOpenPrice(), Digits), 0, CLR_NONE);
+        }
+    }
+}
+
+// Main program
+void OnTick() {
+    // Monitor drawdown limits
+    monitorDrawdown();
+    
+    // Track trade progress and set profit targets
+    trackTradeProgress();
+    
+    // Handle trade execution, stop losses, and take profits
+    tradeManagement();
+}
+
+// Test the code
+void OnStart() {
+    // Print initial account balance
+    Print('Initial Account Balance: ', AccountInfoDouble(ACCOUNT_BALANCE));
+    
+    // Open a test trade
+    double lotSize = 0.1; // 0.1 lot size
+    
+    int ticket = OrderSend(Symbol(), OP_BUY, lotSize, Ask, 0, 0, 0, 'Test Trade', 0, 0, Green);
+    
+    if (ticket > 0) {
+        Print('Test Trade opened successfully');
+    } else {
+        Print('Failed to open Test Trade');
+    }
+    
+    // Wait for some time to simulate trade progress
+    Sleep(5000);
+    
+    // Print current trade profit
+    Print('Current Trade Profit: ', OrderProfit());
+    
+    // Close the test trade
+    if (OrderClose(ticket, lotSize, Bid, 0, Red)) {
+        Print('Test Trade closed successfully');
+    } else {
+        Print('Failed to close Test Trade');
+    }
+    
+    // Print final account balance
+    Print('Final Account Balance: ', AccountInfoDouble(ACCOUNT_BALANCE));
+}
